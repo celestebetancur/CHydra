@@ -352,7 +352,7 @@ public class ShaderTools {
     }
 
     vec4 src(vec2 _st, sampler2D tex){
-        return texture2D(tex,_st);
+        return texture(tex,_st);
     }
 
     vec4 osc(vec2 _st, float freq, float sync, float offset){

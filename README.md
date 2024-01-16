@@ -1,4 +1,4 @@
-# LiveCodingVisual
+# CHydra LiveCodingVisuals inside ChucK
 Code library and examples 
 
 

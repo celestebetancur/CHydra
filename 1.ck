@@ -1926,12 +1926,12 @@ st.osc(47,0)
 
 while (true) {
     plane.mat().uniformFloat("u_Time", now/second);
+
+    //To run the shader just once everytime playground changes
     if(flag){
         plane.mat().fragString(st.shader(ShaderCode));
         0 => flag;
     }
-    
-
     //The time is now
     GG.nextFrame() => now;
 }

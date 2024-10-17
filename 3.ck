@@ -10,20 +10,78 @@ class ShaderType {
 
 public class ShaderTools {     
 
-    hydra => string header;
+    // FFT... who needs more in graphics? 
+    // Feature extraction
+    //SawOsc s => FFT fftEx => blackhole;
+    adc => FFT fftEx => blackhole;
 
-    ";}" => global string close;
+    8 => int NUM_DIMENSIONS;
+
+    NUM_DIMENSIONS => fftEx.size;
+    // this array will give you the magic numbers
+    float FFT[NUM_DIMENSIONS];
+    // set window type and size
+    Windowing.hann(fftEx.size()) => fftEx.window;
+    // our hop size (how often to perform analysis)
+    (fftEx.size()/2)::samp => dur HOP;
+
+    function void featureExtract(){
+
+        while(true){
+            //s.freq(Math.random2(20,22000));
+            fftEx.upchuck();
+
+            for( int d; d < NUM_DIMENSIONS; d++ )
+                {
+                    (fftEx.fval(d)) => FFT[d];
+                }
+            HOP => now;
+        }
+    }
+
+    // Envelope follower taken from the chuck examples
+    adc => Gain gf => OnePole p => blackhole;
+
+    adc => gf;
+
+    3 => gf.op;
+
+    0.99 => p.pole;
+    // This will act as a boolean every time the audio input is above the threshold
+    0 => int BANG;
+    0 => float FOLLOWER;
+
+    function void follower(){
+        while( true )
+        {
+            Math.clampf(p.last() * 100,0,1) => FOLLOWER;
+            if( p.last() > 0.01 )
+            {
+                1 => BANG;
+                80::ms => now;
+            }
+            0 => BANG;
+            20::ms => now;
+        }
+    }
+   
+    // Make sure to spork the magic
+    spork~featureExtract();
+    spork~follower();
+
+    hydra => string header;
+    ";}" => string close;
 
     function ShaderType noise(){
         ShaderType toReturn;
-        "noise ( uv , 10. , .1 )"=> toReturn.code;
+        "noise ( uv , 100. , 10. )"=> toReturn.code;
         "src" => toReturn.type;
         return toReturn;
     }
 
     function ShaderType noise(float freq){
         ShaderType toReturn;
-        "noise ( uv , "+Std.ftoa(freq,10)+" , .1 )"=> toReturn.code;
+        "noise ( uv , "+Std.ftoa(freq,10)+" , 10. )"=> toReturn.code;
         "src" => toReturn.type;
         return toReturn;
     }
@@ -100,7 +158,7 @@ public class ShaderTools {
 
     function ShaderType shape(){
         ShaderType toReturn;
-        "shape ( uv , 4. , 0.25 , 0.001 )"=> toReturn.code;
+        "shape ( uv , 4. , 0.25 , 0.0 )"=> toReturn.code;
         "src" => toReturn.type;
         return toReturn;
     }
@@ -177,7 +235,7 @@ public class ShaderTools {
 
     function ShaderType rotate(){
         ShaderType toReturn;
-        "rotate ( uv , .5 , .0 )"=> toReturn.code;
+        "rotate ( uv , 1. , 1. )"=> toReturn.code;
         "trns" => toReturn.type;
         return toReturn;
     }
@@ -296,35 +354,35 @@ public class ShaderTools {
 
         function ShaderType modulateRepeat(ShaderType src){
         ShaderType toReturn;
-        "modulateRepeat ( uv , "+src.code+" , 3. , 3. , 0.5 , 0.5 )" => toReturn.code;
+        "modulateRepeat ( tx , "+src.code+" , 3. , 3. , 0.5 , 0.5 )" => toReturn.code;
         "trns" => toReturn.type;
         return toReturn;
     }
 
     function ShaderType modulateRepeat(ShaderType src, float repeatX){
         ShaderType toReturn;
-        "modulateRepeat ( uv , "+src.code+" , "+Std.ftoa(repeatX,10)+" , 3. , 0.5 , 0.5 )" => toReturn.code;
+        "modulateRepeat ( tx , "+src.code+" , "+Std.ftoa(repeatX,10)+" , 3. , 0.5 , 0.5 )" => toReturn.code;
         "trns" => toReturn.type;
         return toReturn;
     }
 
     function ShaderType modulateRepeat(ShaderType src, float repeatX, float repeatY){
         ShaderType toReturn;
-        "modulateRepeat ( uv , "+src.code+" , "+Std.ftoa(repeatX,10)+" , "+Std.ftoa(repeatY,10)+" , 0.5 , 0.5 )" => toReturn.code;
+        "modulateRepeat ( tx , "+src.code+" , "+Std.ftoa(repeatX,10)+" , "+Std.ftoa(repeatY,10)+" , 0.5 , 0.5 )" => toReturn.code;
         "trns" => toReturn.type;
         return toReturn;
     }
 
     function ShaderType modulateRepeat(ShaderType src, float repeatX, float repeatY, float offsetX){
         ShaderType toReturn;
-        "modulateRepeat ( uv , "+src.code+" , "+Std.ftoa(repeatX,10)+" , "+Std.ftoa(repeatY,10)+" , "+Std.ftoa(offsetX,10)+" , 0.5 )" => toReturn.code;
+        "modulateRepeat ( tx , "+src.code+" , "+Std.ftoa(repeatX,10)+" , "+Std.ftoa(repeatY,10)+" , "+Std.ftoa(offsetX,10)+" , 0.5 )" => toReturn.code;
         "trns" => toReturn.type;
         return toReturn;
     }
 
     function ShaderType modulateRepeat(ShaderType src, float repeatX, float repeatY, float offsetX, float offsetY){
         ShaderType toReturn;
-        "modulateRepeat ( uv , "+src.code+" , "+Std.ftoa(repeatX,10)+" , "+Std.ftoa(repeatY,10)+" , "+Std.ftoa(offsetX,10)+" , "+Std.ftoa(offsetX,10)+" )" => toReturn.code;
+        "modulateRepeat ( tx , "+src.code+" , "+Std.ftoa(repeatX,10)+" , "+Std.ftoa(repeatY,10)+" , "+Std.ftoa(offsetX,10)+" , "+Std.ftoa(offsetX,10)+" )" => toReturn.code;
         "trns" => toReturn.type;
         return toReturn;
     }
@@ -352,14 +410,14 @@ public class ShaderTools {
 
     function ShaderType modulateRepeatX(ShaderType src){
         ShaderType toReturn;
-        "modulateRepeatX ( uv , "+src.code+" , 3. , 0.5 )" => toReturn.code;
+        "modulateRepeatX ( tx , "+src.code+" , 3. , 0.5 )" => toReturn.code;
         "trns" => toReturn.type;
         return toReturn;
     }
 
     function ShaderType modulateRepeatX(ShaderType src, float reps){
         ShaderType toReturn;
-        "modulateRepeatX ( uv , "+src.code+" , "+Std.ftoa(reps,10)+" , 0.5 )" => toReturn.code;
+        "modulateRepeatX ( tx , "+src.code+" , "+Std.ftoa(reps,10)+" , 0.5 )" => toReturn.code;
         "trns" => toReturn.type;
         return toReturn;
     }
@@ -520,42 +578,42 @@ public class ShaderTools {
 
     function ShaderType modulateScrollX(ShaderType src){
         ShaderType toReturn;
-        "modulateScrollX ( uv , "+src.code+" , 0.5 , 1.0 )" => toReturn.code;
+        "modulateScrollX ( tx , "+src.code+" , 0.5 , 1.0 )" => toReturn.code;
         "trns" => toReturn.type;
         return toReturn;
     }
 
     function ShaderType modulateScrollX(ShaderType src, float scrollX){
         ShaderType toReturn;
-        "modulateScrollX ( uv , "+src.code+" , "+Std.ftoa(scrollX,10)+" , 1.0 )" => toReturn.code;
+        "modulateScrollX ( tx , "+src.code+" , "+Std.ftoa(scrollX,10)+" , 1.0 )" => toReturn.code;
         "trns" => toReturn.type;
         return toReturn;
     }
 
     function ShaderType modulateScrollX(ShaderType src, float scrollX, float speed){
         ShaderType toReturn;
-        "modulateScrollX ( uv , "+src.code+" , "+Std.ftoa(scrollX,10)+" , "+Std.ftoa(speed,10)+" )" => toReturn.code;
+        "modulateScrollX ( tx , "+src.code+" , "+Std.ftoa(scrollX,10)+" , "+Std.ftoa(speed,10)+" )" => toReturn.code;
         "trns" => toReturn.type;
         return toReturn;
     }
 
     function ShaderType modulateScrollY(ShaderType src){
         ShaderType toReturn;
-        "modulateScrollY ( uv , "+src.code+" , 0.5 , 1.0 )" => toReturn.code;
+        "modulateScrollY ( tx , "+src.code+" , 0.5 , 1.0 )" => toReturn.code;
         "trns" => toReturn.type;
         return toReturn;
     }
 
     function ShaderType modulateScrollY(ShaderType src, float scrollY){
         ShaderType toReturn;
-        "modulateScrollY ( uv , "+src.code+" , "+Std.ftoa(scrollY,10)+" , 1.0 )" => toReturn.code;
+        "modulateScrollY ( tx , "+src.code+" , "+Std.ftoa(scrollY,10)+" , 1.0 )" => toReturn.code;
         "trns" => toReturn.type;
         return toReturn;
     }
 
     function ShaderType modulateScrollY(ShaderType src, float scrollY, float speed){
         ShaderType toReturn;
-        "modulateScrollY ( uv , "+src.code+" , "+Std.ftoa(scrollY,10)+" , "+Std.ftoa(speed,10)+" )" => toReturn.code;
+        "modulateScrollY ( tx , "+src.code+" , "+Std.ftoa(scrollY,10)+" , "+Std.ftoa(speed,10)+" )" => toReturn.code;
         "trns" => toReturn.type;
         return toReturn;
     }
@@ -626,7 +684,7 @@ public class ShaderTools {
     function ShaderType add(ShaderType f1, float amount){
         ShaderType toReturn;
         "add ( tx , "+f1.code+" , "+Std.ftoa(amount,10)+" )" => toReturn.code;
-        "trnsC" => toReturn.type;
+        "src" => toReturn.type;
         return toReturn;
     }
 
@@ -640,7 +698,7 @@ public class ShaderTools {
     function ShaderType sub(ShaderType f1, float amount){
         ShaderType toReturn;
         "sub ( tx , "+f1.code+" , "+Std.ftoa(amount,10)+" )" => toReturn.code;
-        "trnsC" => toReturn.type;
+        "src" => toReturn.type;
         return toReturn;
     }
 
@@ -661,7 +719,7 @@ public class ShaderTools {
     function ShaderType blend(ShaderType f1, float amount){
         ShaderType toReturn;
         "blend ( tx , "+f1.code+" , "+Std.ftoa(amount,10)+" )" => toReturn.code;
-        "trnsC" => toReturn.type;
+        "src" => toReturn.type;
         return toReturn;
     }
 
@@ -675,7 +733,7 @@ public class ShaderTools {
     function ShaderType mult(ShaderType f1, float amount){
         ShaderType toReturn;
         "mult ( tx , "+f1.code+" , "+Std.ftoa(amount,10)+" )" => toReturn.code;
-        "trnsC" => toReturn.type;
+        "src" => toReturn.type;
         return toReturn;
     }
 
@@ -723,14 +781,14 @@ public class ShaderTools {
 
     function ShaderType modulatePixelate(ShaderType src){
         ShaderType toReturn;
-        "modulatePixelate ( uv , "+src.code+" , 3. , 10. )" => toReturn.code;
+        "modulatePixelate ( uv , "+src.code+" , 1. , 1. )" => toReturn.code;
         "trns" => toReturn.type;
         return toReturn;
     }
 
     function ShaderType modulatePixelate(ShaderType src, float offset){
         ShaderType toReturn;
-        "modulatePixelate ( uv , "+src.code+" , "+Std.ftoa(offset,10)+ ", 10. )" => toReturn.code;
+        "modulatePixelate ( uv , "+src.code+" , "+Std.ftoa(offset,10)+ ", 1. )" => toReturn.code;
         "trns" => toReturn.type;
         return toReturn;
     }
@@ -1136,7 +1194,6 @@ public class ShaderTools {
 
     //--------------------------------------
     function string shader(string code){
-        //chout <= header+code+close;
         return header+code+close;
     }
 
@@ -1167,21 +1224,19 @@ function ShaderType CodeMaker(ShaderType one, ShaderType two, string type){
                 two.code +=> toReturn.code;
             } else {
                 temp +=> toReturn.code; 
-                // <<< toReturn.code >>>;
             }
         }
         if(type == "srcC"){
             if(temp == "tx"){
                 two.code +=> toReturn.code;
-                // <<< toReturn.code >>>;
             } else {
                 temp +=> toReturn.code; 
             }
-            
         }
     }
+
     "src" => toReturn.type;
-    //<<< toReturn.code >>>;
+    // <<< toReturn.code >>>;
     return toReturn;
 }
 
@@ -1203,30 +1258,14 @@ public ShaderType @operator ->(ShaderType one ,ShaderType two){
 GG.windowTitle( "CHydra" );
 10 => GG.camera().posZ;
 
-GPlane plane;
-plane --> GG.scene();
-ShaderMaterial shaderMat;
-plane.mat(shaderMat);
-
-plane.scaX(16);
-plane.scaY(9);
-
 ShaderTools st;
-global string ShaderCode;
+global string background;
 
-// Machine.add(me.dir()+"/playground1.ck");
-
+(
+    st.solid()
+).code => background;
 
 while (true) {
-    plane.mat().uniformFloat("u_Time", now/second);
-
-    plane.mat().fragString(st.shader(ShaderCode));
-
     // The time is now
     GG.nextFrame() => now;
-
-    Machine.resetShredID();
-    //Automatically replace the playground in case there is new code
-    Machine.add(me.dir()+"/playground1.ck");
-
 }
